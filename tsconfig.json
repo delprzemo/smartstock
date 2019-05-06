@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+        "target": "es6",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "sourceMap": true,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "removeComments": false,
+        "noImplicitAny": true,
+        "suppressImplicitAnyIndexErrors": true,
+        "allowJs": true,
+        "baseUrl": ".",
+        "paths": {
+            "resolve-options": ["src/typings/resolve-options"]
+        }
+        //"strictBindCallApply": true,
+        //"strictNullChecks" : true
+    },
+
+}
