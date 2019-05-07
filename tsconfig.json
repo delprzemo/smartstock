@@ -11,6 +11,7 @@
         "suppressImplicitAnyIndexErrors": true,
         "allowJs": true,
         "baseUrl": ".",
+        "skipLibCheck": true,
         "paths": {
             "resolve-options": ["src/typings/resolve-options"]
         }

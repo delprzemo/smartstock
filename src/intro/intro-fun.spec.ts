@@ -6,24 +6,31 @@ describe('Intro - fun', () => {
     const commonLSTMOptions = {
         iterations: 200000,    // the maximum times to iterate the training data --> number greater than 0
         errorThresh: 0.05,   // the acceptable error percentage from training data --> number between 0 and 1
-        log: false,           // true to use console.log, when a function is supplied it is used --> Either true or a function
-        logPeriod: 10,        // iterations between logging out --> number greater than 0
+        log: true,           // true to use console.log, when a function is supplied it is used --> Either true or a function
+        logPeriod: 100,        // iterations between logging out --> number greater than 0
         learningRate: 0.3,    // scales with delta to effect training rate --> number between 0 and 1
         momentum: 0.1,        // scales with next layer's change value --> number between 0 and 1
         callbackPeriod: 10,   // the number of iterations through the training data between callback calls --> number greater than 0
         timeout: Infinity     // the max number of milliseconds to train for --> number greater than 0
     }
 
-    it("Happy/Sad example", () => {
-        // const net = new brain.recurrent.LSTM();
+    // it("Happy/Sad example", () => {
+    //     const config = {
+    //         binaryThresh: 0.5,
+    //         hiddenLayers: [3],     
+    //         activation: 'sigmoid', 
+    //         leakyReluAlpha: 0.01  
+    //     };
 
-        // net.train([
-        //     { input: 'I feel great about the world!', output: 'happy' },
-        //     { input: 'The world is a terrible place!', output: 'sad' },
-        // ], commonLSTMOptions);
+    //     const net = new brain.NeuralNetwork();
 
-        // const output = net.run('I feel great about the world!');  // 'happy'
-    })
+    //     net.train([{input: [2, 3], output: [6]},
+    //             {input: [4, 2], output: [8]},
+    //             {input: [1, 0], output: [0]},
+    //             {input: [6, 8], output: [48]}], commonLSTMOptions);
+
+    //     const output = net.run([2, 8]);  // [0.987]
+    // })
 
 
     // it('First test with brain.js LSTMT', () => {
@@ -64,6 +71,16 @@ describe('Intro - fun', () => {
         return result;
     }
 
+    function generateSinTrainingData(arrLength: number){
+        let result = [];
+        for(let i = 0; i < arrLength; i++) {
+            let rand = Math.round(Math.random() * 1000)/100;
+            result.push({input: [rand], output: [Math.round(Math.sin(rand) * 100)/100]});
+        }
+
+        return result;
+    }
+
     function normalize(arr: number[]) {
         var positiveRatio = Math.max(...arr);
         var negativeRatio = Math.min(...arr);
@@ -96,7 +113,7 @@ describe('Intro - fun', () => {
             iterations: 500000,    // the maximum times to iterate the training data --> number greater than 0
             errorThresh: 0.05,   // the acceptable error percentage from training data --> number between 0 and 1
             log: true,           // true to use console.log, when a function is supplied it is used --> Either true or a function
-            logPeriod: 10,        // iterations between logging out --> number greater than 0
+            logPeriod: 1000,        // iterations between logging out --> number greater than 0
             learningRate: 0.3,    // scales with delta to effect training rate --> number between 0 and 1
             momentum: 0.1,        // scales with next layer's change value --> number between 0 and 1
             callbackPeriod: 10,   // the number of iterations through the training data between callback calls --> number greater than 0
@@ -108,7 +125,7 @@ describe('Intro - fun', () => {
 
         const config = {
             inputSize: 1,
-            hiddenLayers: [10],
+            hiddenLayers: [15, 15],
             outputSize: 1
           };
 
@@ -128,12 +145,11 @@ describe('Intro - fun', () => {
             ]);  // 3
     })
 
-
     // it('First test with brain.js Neural', () => {
 
     //     const myCommonLSTMOptions = {
     //         iterations: 200000,    // the maximum times to iterate the training data --> number greater than 0
-    //         errorThresh: 0.01,   // the acceptable error percentage from training data --> number between 0 and 1
+    //         errorThresh: 0.04,   // the acceptable error percentage from training data --> number between 0 and 1
     //         log: true,           // true to use console.log, when a function is supplied it is used --> Either true or a function
     //         logPeriod: 10,        // iterations between logging out --> number greater than 0
     //         learningRate: 0.3,    // scales with delta to effect training rate --> number between 0 and 1
@@ -144,7 +160,13 @@ describe('Intro - fun', () => {
     //         }
     //     }
 
-    //     const net = new brain.NeuralNetwork;
+    //     const config = {
+    //         inputSize: 1,
+    //         hiddenLayers: [10],
+    //         outputSize: 1
+    //     };
+
+    //     const net = new brain.NeuralNetwork(config);
         
     //     let trainData = converToInputOutput(generateSinArray(100),
     //         5);
@@ -159,5 +181,35 @@ describe('Intro - fun', () => {
     //         0.296339788497322, 
     //         -0.643561205976262
     //         ]);  // 3
+    // })
+
+    // it('Sinus with brain.js Neural', () => {
+
+    //     const myCommonLSTMOptions = {
+    //         iterations: 20000000,    // the maximum times to iterate the training data --> number greater than 0
+    //         errorThresh: 0.04,   // the acceptable error percentage from training data --> number between 0 and 1
+    //         log: true,           // true to use console.log, when a function is supplied it is used --> Either true or a function
+    //         logPeriod: 1000,        // iterations between logging out --> number greater than 0
+    //         learningRate: 0.1,    // scales with delta to effect training rate --> number between 0 and 1
+    //         momentum: 0.1,        // scales with next layer's change value --> number between 0 and 1
+    //         callbackPeriod: 10,   // the number of iterations through the training data between callback calls --> number greater than 0
+    //         timeout: Infinity     // the max number of milliseconds to train for --> number greater than 0
+    //     }
+
+    //     const config = {
+    //         inputSize: 1,
+    //         hiddenLayers: [15, 5],
+    //         outputSize: 1
+    //     };
+
+    //     const net = new brain.NeuralNetwork(config);
+    //     let sinData = generateSinTrainingData(100);
+
+    //     net.train(sinData, 
+    //         myCommonLSTMOptions);
+
+    //     let output = net.run([
+    //         800
+    //     ]);  // 0,67
     // })
 });
