@@ -39,41 +39,6 @@ describe('Intro -tensorflow -  fun', () => {
     //     });
     // })
 
-    function generateSinTrainingData(arrLength: number) {
-        let input = [];
-        let output = [];
-        for (let i = 0; i < arrLength; i++) {
-            let rand = Math.random();
-            input.push(rand);
-            output.push(Math.sin(rand));
-        }
-
-        const xs = tf.tensor2d(input, [input.length, 1]);
-        const ys = tf.tensor2d(output, [output.length, 1]);
-
-        return [xs, ys];
-    }
-
-    function generateSinTimeSeries(arrLength: number) {
-        let result = [];
-        for (let i = 0; i < arrLength; i++) {
-            result.push(Math.sin(i));
-        }
-
-        return result;
-    }
-
-    function generateTimeSeriesInputOutpu(array: number[], windowSize: number) {
-        let input = [];
-        let output = [];
-        for (let i = windowSize; i < array.length - 1; i++) {
-            input.push(array.slice(i - windowSize, i));
-            output.push(array[i + 1]);
-        }
-
-        return [input, output];
-    }
-
     // it("Simple prediction Sin", async function (done) {
     //     this.timeout(500000); // This works
 
@@ -127,10 +92,18 @@ describe('Intro -tensorflow -  fun', () => {
     it("Simple prediction Sin with LSTM", async function (done) {
         this.timeout(500000); // This works
 
+        const size = 100;
+        const windowSize = 5;
+        const epochs = 40;
+        const learningRate = 0.001;
+        const layers = 2;
+
+
         // Prepare training data
         let sinTimeSeries = generateSinTimeSeries(100);
         let [input, output] = generateTimeSeriesInputOutpu(sinTimeSeries, 5);
-        const trainingResult = await trainModel(input, output, 50, 5, 20, 0.01, 4, () => {});
+        const trainingResult = await trainModel(input, output, size, windowSize, epochs, 
+            learningRate, layers, () => {});
         const result = await Predict(input, 50, trainingResult.model);
 
     })
@@ -190,11 +163,56 @@ describe('Intro -tensorflow -  fun', () => {
 
     function Predict(inputs: any[], size: number, model: tf.Sequential) {
         var inps = inputs.slice(Math.floor(size / 100 * inputs.length), inputs.length);
+
+        inps = [[
+        0.683261715,
+        0.9835877454343449,
+        0.3796077390275217,
+        -0.573381872,
+        -0.999206834,
+    ]]
+
         const outps = (model.predict(tf.tensor2d(inps, [inps.length,
         inps[0].length]).div(tf.scalar(10))) as Tensor).mul(10);
 
         console.log(outps.toString());
 
         return Array.from(outps.dataSync());
+    }
+
+
+    function generateSinTrainingData(arrLength: number) {
+        let input = [];
+        let output = [];
+        for (let i = 0; i < arrLength; i++) {
+            let rand = Math.random();
+            input.push(rand);
+            output.push(Math.sin(rand));
+        }
+
+        const xs = tf.tensor2d(input, [input.length, 1]);
+        const ys = tf.tensor2d(output, [output.length, 1]);
+
+        return [xs, ys];
+    }
+
+    function generateSinTimeSeries(arrLength: number) {
+        let result = [];
+        for (let i = 0; i < arrLength; i++) {
+            result.push(Math.sin(i));
+        }
+
+        return result;
+    }
+
+    function generateTimeSeriesInputOutpu(array: number[], windowSize: number) {
+        let input = [];
+        let output = [];
+        for (let i = windowSize; i < array.length - 1; i++) {
+            input.push(array.slice(i - windowSize, i));
+            output.push(array[i]);
+        }
+
+        return [input, output];
     }
 });
