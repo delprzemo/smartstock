@@ -1,6 +1,8 @@
 import { expect } from 'chai';
 import * as tf from '@tensorflow/tfjs-node'
 import { Tensor } from '@tensorflow/tfjs-node';
+import {StockData} from '../data/stock-data.service'
+
 
 describe('Intro -tensorflow -  fun', () => {
     before(function () {
@@ -89,20 +91,39 @@ describe('Intro -tensorflow -  fun', () => {
     // })
 
 
-    it("Simple prediction Sin with LSTM", async function (done) {
-        this.timeout(500000); // This works
+    // it("Simple prediction Sin with LSTM", async function (done) {
+    //     this.timeout(50000000); // This works
+
+    //     const size = 100;
+    //     const windowSize = 5;
+    //     const epochs = 30;
+    //     const learningRate = 0.001;
+    //     const layers = 2;
+
+
+    //     // Prepare training data
+    //     let sinTimeSeries = generateSinTimeSeries(100);
+    //     let [input, output] = generateTimeSeriesInputOutpu(sinTimeSeries, 5);
+    //     const trainingResult = await trainModel(input, output, size, windowSize, epochs, 
+    //         learningRate, layers, () => {});
+    //     const result = await Predict(input, 50, trainingResult.model);
+
+    // })
+
+    it("Simple prediction Stock dats with LSTM", async function (done) {
+        this.timeout(50000000); // This works
 
         const size = 100;
         const windowSize = 5;
-        const epochs = 40;
+        const epochs = 11;
         const learningRate = 0.001;
         const layers = 2;
 
 
         // Prepare training data
-        let sinTimeSeries = generateSinTimeSeries(100);
+        let sinTimeSeries = StockData.getAppleMockedData();
         let [input, output] = generateTimeSeriesInputOutpu(sinTimeSeries, 5);
-        const trainingResult = await trainModel(input, output, size, windowSize, epochs, 
+        const trainingResult = await trainModel(input, output, input.length, windowSize, epochs, 
             learningRate, layers, () => {});
         const result = await Predict(input, 50, trainingResult.model);
 
@@ -165,11 +186,11 @@ describe('Intro -tensorflow -  fun', () => {
         var inps = inputs.slice(Math.floor(size / 100 * inputs.length), inputs.length);
 
         inps = [[
-        0.683261715,
-        0.9835877454343449,
-        0.3796077390275217,
-        -0.573381872,
-        -0.999206834,
+            205.28,
+            204.30,
+            204.61,
+            200.67,
+            210.52
     ]]
 
         const outps = (model.predict(tf.tensor2d(inps, [inps.length,
@@ -208,7 +229,7 @@ describe('Intro -tensorflow -  fun', () => {
     function generateTimeSeriesInputOutpu(array: number[], windowSize: number) {
         let input = [];
         let output = [];
-        for (let i = windowSize; i < array.length - 1; i++) {
+        for (let i = windowSize; i < array.length; i++) {
             input.push(array.slice(i - windowSize, i));
             output.push(array[i]);
         }
