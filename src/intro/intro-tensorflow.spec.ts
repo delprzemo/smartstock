@@ -156,37 +156,85 @@ describe('Intro -tensorflow -  fun', () => {
     // })
 
 
-    
-    it("Simple prediction Real Stock Data with LSTM", async function (done) {
+
+    // it("Simple prediction Real Stock Data with LSTM", async function (done) {
+    //     this.timeout(50000000); // This works
+
+    //     const windowSize = 5;
+    //     const epochs = 25;
+    //     const learningRate = 0.001;
+    //     const layers = 2;
+    //     const checkIteration = 10;
+
+
+    //     // Prepare training data
+    //     let stockTimeSeries = await StockData.getStockData("AAPL", "2019-01-01");
+    //     let [normalizedData, min, max] = normalize(stockTimeSeries);
+    //     let [input, output] = generateTimeSeriesInputOutput(normalizedData, windowSize);
+    //     let [checkModels, trainInput, trainOutput] = splitTrainIteration(input, output, checkIteration);
+
+
+    //     const trainingResult = await trainModel(trainInput, trainOutput, windowSize, epochs,
+    //         learningRate, layers, () => { });
+
+
+    //     for (let item of checkModels) {
+    //         let predicted = await Predict(item, trainingResult.model)[0];
+    //         let deNormalized = deNormalize(predicted, min, max);
+    //         item = calculateCheckValues(item, deNormalized, min, max);
+    //     }
+
+    //     console.log(calculateStatistics(checkModels));
+
+    // })
+
+
+    it("Simple prediction for multiple Real Stock Data with LSTM", async function (done) {
         this.timeout(50000000); // This works
-
-        const windowSize = 5;
-        const epochs = 25;
-        const learningRate = 0.001;
-        const layers = 2;
-        const checkIteration = 10;
-
-
-        // Prepare training data
-        let stockTimeSeries = await StockData.getForex("USD", "GBP", "2019-01-01");
-        let [normalizedData, min, max] = normalize(stockTimeSeries);
-        let [input, output] = generateTimeSeriesInputOutput(normalizedData, windowSize);
-        let [checkModels, trainInput, trainOutput] = splitTrainIteration(input, output, checkIteration);
-
-
-        const trainingResult = await trainModel(trainInput, trainOutput, windowSize, epochs,
-            learningRate, layers, () => { });
-
-
-        for (let item of checkModels) {
-            let predicted = await Predict(item, trainingResult.model)[0];
-            let deNormalized = deNormalize(predicted, min, max);
-            item = calculateCheckValues(item, deNormalized, min, max);
-        }
-
-        console.log(calculateStatistics(checkModels));
-
+        const result = await trainAndCheck("KOSS", "2018-11-15", "MSN");
+        console.log(result);
     })
+
+
+    async function trainAndCheck(baseSymbol: string, date: string, ...rest: string[]): Promise<CheckStatsModel> {
+        let returnPromise: Promise<CheckStatsModel> = new Promise(async (resolve, reject) => {
+            const windowSize = 10;
+            const epochs = 30 * (rest.length + 1);
+            const learningRate = 0.001;
+            const layers = 2;
+            const checkIteration = 10;
+            let restStocks = [];
+    
+    
+            // Prepare training data
+            let stockTimeSeries = await StockData.getStockData(baseSymbol, date);
+    
+            for(let item of rest) {
+                restStocks.push(justNormalize(await StockData.getStockData(item, date)))
+            }
+    
+            let [normalizedData, min, max] = normalize(stockTimeSeries);
+            let [input, output] = generateTimeSeriesInputOutput(normalizedData, windowSize, ...restStocks);
+            let [checkModels, trainInput, trainOutput] = splitTrainIteration(input, output, checkIteration);
+    
+            let sumWindowSize = windowSize * (1 + restStocks.length);
+    
+            const trainingResult = await trainModel(trainInput, trainOutput, sumWindowSize, epochs,
+                learningRate, layers, () => { });
+    
+    
+            for (let item of checkModels) {
+                let predicted = await Predict(item, trainingResult.model)[0];
+                let deNormalized = deNormalize(predicted, min, max);
+                item = calculateCheckValues(item, deNormalized, min, max, restStocks.length);
+            }
+    
+            resolve(calculateStatistics(checkModels));
+        });
+
+        return returnPromise;
+
+    }
 
     function normalize(input: number[]): [number[], number, number] {
 
@@ -196,6 +244,16 @@ describe('Intro -tensorflow -  fun', () => {
         input = input.map(x => x = (x - min) / (max - min));
 
         return [input, min, max];
+    }
+
+    function justNormalize(input: number[]): number[] {
+
+        const min = Math.min.apply(null, input);
+        const max = Math.max.apply(null, input);
+
+        input = input.map(x => x = (x - min) / (max - min));
+
+        return input;
     }
 
     function deNormalize(value: number, min: number, max: number) {
@@ -264,10 +322,12 @@ describe('Intro -tensorflow -  fun', () => {
     }
 
     function calculateCheckValues(model: CheckModel, predictedValue: number,
-        min: number, max: number): CheckModel {
+        min: number, max: number, numExtraStocks: number): CheckModel {
 
         model.output = deNormalize(model.output, min, max);
-        model.input = model.input.map(x=>deNormalize(x, min, max));
+        model.input = model.input
+            .slice(0, model.input.length / (numExtraStocks + 1))
+            .map(x => deNormalize(x, min, max));
 
         model.calculatedOutput = predictedValue;
         model.error = Math.abs(model.output - model.calculatedOutput);
@@ -334,11 +394,18 @@ describe('Intro -tensorflow -  fun', () => {
         return result;
     }
 
-    function generateTimeSeriesInputOutput(array: number[], windowSize: number): [number[][], number[]] {
+    function generateTimeSeriesInputOutput(array: number[],
+        windowSize: number, ...rest: number[][]): [number[][], number[]] {
+
         let input = [];
         let output = [];
         for (let i = windowSize; i < array.length; i++) {
             let toPush = array.slice(i - windowSize, i);
+
+            for (let serie of rest) {
+                toPush = toPush.concat(serie.slice(i - windowSize, i));
+            }
+
             input.push(toPush);
             output.push(array[i]);
         }
