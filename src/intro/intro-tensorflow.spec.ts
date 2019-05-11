@@ -1,7 +1,9 @@
 import { expect } from 'chai';
 import * as tf from '@tensorflow/tfjs-node'
 import { Tensor } from '@tensorflow/tfjs-node';
-import {StockData} from '../data/stock-data.service'
+import { StockData } from '../data/stock-data.service'
+import { CheckModel } from '../data/models/check.model';
+import { CheckStatsModel } from '../data/models/check-stats.model';
 
 
 describe('Intro -tensorflow -  fun', () => {
@@ -94,43 +96,81 @@ describe('Intro -tensorflow -  fun', () => {
     // it("Simple prediction Sin with LSTM", async function (done) {
     //     this.timeout(50000000); // This works
 
-    //     const size = 100;
     //     const windowSize = 5;
     //     const epochs = 30;
     //     const learningRate = 0.001;
     //     const layers = 2;
+    //     const checkIteration = 40;
 
 
     //     // Prepare training data
-    //     let sinTimeSeries = generateSinTimeSeries(100);
-    //     let [input, output] = generateTimeSeriesInputOutpu(sinTimeSeries, 5);
-    //     const trainingResult = await trainModel(input, output, size, windowSize, epochs, 
-    //         learningRate, layers, () => {});
-    //     const result = await Predict(input, 50, trainingResult.model);
+    //     let sinTimeSeries = generateSinTimeSeries(140);
+    //     let [normalizedData, min, max] = normalize(sinTimeSeries);
+    //     let [input, output] = generateTimeSeriesInputOutput(normalizedData, windowSize);
+    //     let [checkModels, trainInput, trainOutput] = splitTrainIteration(input, output, checkIteration);
 
+
+    //     const trainingResult = await trainModel(trainInput, trainOutput, windowSize, epochs,
+    //         learningRate, layers, () => { });
+
+
+    //     for (let item of checkModels) {
+    //         let predicted = await Predict(item, trainingResult.model)[0];
+    //         let deNormalized = deNormalize(predicted, min, max);
+    //         item = calculateCheckValues(item, deNormalized);
+    //     }
+
+    //     console.log(calculateStatistics(checkModels));
     // })
 
-    it("Simple prediction Stock dats with LSTM", async function (done) {
+
+    it("Simple prediction Stock Data with LSTM", async function (done) {
         this.timeout(50000000); // This works
 
-        const size = 100;
-        const windowSize = 5;
-        const epochs = 11;
+        const windowSize = 10;
+        const epochs = 20;
         const learningRate = 0.001;
         const layers = 2;
+        const checkIteration = 10;
 
 
         // Prepare training data
-        let sinTimeSeries = StockData.getAppleMockedData();
-        let [input, output] = generateTimeSeriesInputOutpu(sinTimeSeries, 5);
-        const trainingResult = await trainModel(input, output, input.length, windowSize, epochs, 
-            learningRate, layers, () => {});
-        const result = await Predict(input, 50, trainingResult.model);
+        let stockTimeSeries = StockData.getFewAppleMockedData(110);
+        let [normalizedData, min, max] = normalize(stockTimeSeries);
+        let [input, output] = generateTimeSeriesInputOutput(normalizedData, windowSize);
+        let [checkModels, trainInput, trainOutput] = splitTrainIteration(input, output, checkIteration);
+
+
+        const trainingResult = await trainModel(trainInput, trainOutput, windowSize, epochs,
+            learningRate, layers, () => { });
+
+
+        for (let item of checkModels) {
+            let predicted = await Predict(item, trainingResult.model)[0];
+            let deNormalized = deNormalize(predicted, min, max);
+            item = calculateCheckValues(item, deNormalized, min, max);
+        }
+
+        console.log(calculateStatistics(checkModels));
 
     })
 
+    function normalize(input: number[]): [number[], number, number] {
 
-    async function trainModel(inputs: any[], outputs: any[], size: number, window_size: number, n_epochs: number, 
+        const min = Math.min.apply(null, input);
+        const max = Math.max.apply(null, input);
+
+        input = input.map(x => x = (x - min) / (max - min));
+
+        return [input, min, max];
+    }
+
+    function deNormalize(value: number, min: number, max: number) {
+        return (value * (max - min)) + min;
+    }
+
+
+    async function trainModel(inputs: any[], outputs: any[], window_size: number, n_epochs: number,
         learning_rate: number, n_layers: number, callback: Function) {
         const input_layer_shape = window_size;
         const input_layer_neurons = 20;
@@ -147,9 +187,6 @@ describe('Intro -tensorflow -  fun', () => {
         const output_layer_neurons = 1;
 
         const model = tf.sequential();
-
-        inputs = inputs.slice(0, Math.floor(size / 100 * inputs.length));
-        outputs = outputs.slice(0, Math.floor(size / 100 * outputs.length));
 
         const xs = tf.tensor2d(inputs, [inputs.length, inputs[0].length]).div(tf.scalar(10));
         const ys = tf.tensor2d(outputs, [outputs.length, 1]).reshape([outputs.length, 1]).div(tf.scalar(10));
@@ -182,21 +219,59 @@ describe('Intro -tensorflow -  fun', () => {
         return { model: model, stats: hist };
     }
 
-    function Predict(inputs: any[], size: number, model: tf.Sequential) {
-        var inps = inputs.slice(Math.floor(size / 100 * inputs.length), inputs.length);
+    function calculateStatistics(models: CheckModel[]): CheckStatsModel {
+        let sumError = 0;
+        let correctedTrends = 0;
+        for (let item of models) {
+            sumError = sumError + item.error;
+            correctedTrends = correctedTrends + (item.isCorrectTrend ? 1 : 0);
+        }
 
-        inps = [[
-            205.28,
-            204.30,
-            204.61,
-            200.67,
-            210.52
-    ]]
+        return new CheckStatsModel(sumError / models.length, correctedTrends / models.length);
+    }
+
+    function calculateCheckValues(model: CheckModel, predictedValue: number,
+        min: number, max: number): CheckModel {
+
+        model.output = deNormalize(model.output, min, max);
+        model.input = model.input.map(x=>deNormalize(x, min, max));
+
+        model.calculatedOutput = predictedValue;
+        model.error = Math.abs(model.output - model.calculatedOutput);
+        let isCorrectTrend = true;
+        let lastInputValue = model.input[model.input.length - 1];
+
+        if (lastInputValue < model.output) {
+            isCorrectTrend = lastInputValue < model.calculatedOutput
+        }
+        if (lastInputValue > model.output) {
+            isCorrectTrend = lastInputValue > model.calculatedOutput
+        }
+
+        model.isCorrectTrend = isCorrectTrend;
+        return model;
+    }
+
+    function splitTrainIteration(input: number[][], output: number[],
+        checkIteration: number): [CheckModel[], number[][], number[]] {
+
+        let trainInput = input.slice(0, input.length - checkIteration);
+        let trainOutput = output.slice(0, input.length - checkIteration);
+        let result: CheckModel[] = [];
+
+        for (let i = input.length - checkIteration; i < input.length; i++) {
+            result.push(new CheckModel(input[i], output[i]));
+        }
+
+        return [result, trainInput, trainOutput];
+    }
+
+    function Predict(checkModel: CheckModel, model: tf.Sequential) {
+
+        let inps = [checkModel.input];
 
         const outps = (model.predict(tf.tensor2d(inps, [inps.length,
         inps[0].length]).div(tf.scalar(10))) as Tensor).mul(10);
-
-        console.log(outps.toString());
 
         return Array.from(outps.dataSync());
     }
@@ -226,7 +301,7 @@ describe('Intro -tensorflow -  fun', () => {
         return result;
     }
 
-    function generateTimeSeriesInputOutpu(array: number[], windowSize: number) {
+    function generateTimeSeriesInputOutput(array: number[], windowSize: number): [number[][], number[]] {
         let input = [];
         let output = [];
         for (let i = windowSize; i < array.length; i++) {
