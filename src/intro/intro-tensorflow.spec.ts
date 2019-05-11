@@ -124,18 +124,51 @@ describe('Intro -tensorflow -  fun', () => {
     // })
 
 
-    it("Simple prediction Stock Data with LSTM", async function (done) {
+    // it("Simple prediction Stock Data with LSTM", async function (done) {
+    //     this.timeout(50000000); // This works
+
+    //     const windowSize = 10;
+    //     const epochs = 20;
+    //     const learningRate = 0.001;
+    //     const layers = 2;
+    //     const checkIteration = 10;
+
+
+    //     // Prepare training data
+    //     let stockTimeSeries = StockData.getFewAppleMockedData(110);
+    //     let [normalizedData, min, max] = normalize(stockTimeSeries);
+    //     let [input, output] = generateTimeSeriesInputOutput(normalizedData, windowSize);
+    //     let [checkModels, trainInput, trainOutput] = splitTrainIteration(input, output, checkIteration);
+
+
+    //     const trainingResult = await trainModel(trainInput, trainOutput, windowSize, epochs,
+    //         learningRate, layers, () => { });
+
+
+    //     for (let item of checkModels) {
+    //         let predicted = await Predict(item, trainingResult.model)[0];
+    //         let deNormalized = deNormalize(predicted, min, max);
+    //         item = calculateCheckValues(item, deNormalized, min, max);
+    //     }
+
+    //     console.log(calculateStatistics(checkModels));
+
+    // })
+
+
+    
+    it("Simple prediction Real Stock Data with LSTM", async function (done) {
         this.timeout(50000000); // This works
 
-        const windowSize = 10;
-        const epochs = 20;
+        const windowSize = 5;
+        const epochs = 25;
         const learningRate = 0.001;
         const layers = 2;
         const checkIteration = 10;
 
 
         // Prepare training data
-        let stockTimeSeries = StockData.getFewAppleMockedData(110);
+        let stockTimeSeries = await StockData.getForex("USD", "GBP", "2019-01-01");
         let [normalizedData, min, max] = normalize(stockTimeSeries);
         let [input, output] = generateTimeSeriesInputOutput(normalizedData, windowSize);
         let [checkModels, trainInput, trainOutput] = splitTrainIteration(input, output, checkIteration);
@@ -305,7 +338,8 @@ describe('Intro -tensorflow -  fun', () => {
         let input = [];
         let output = [];
         for (let i = windowSize; i < array.length; i++) {
-            input.push(array.slice(i - windowSize, i));
+            let toPush = array.slice(i - windowSize, i);
+            input.push(toPush);
             output.push(array[i]);
         }
 
