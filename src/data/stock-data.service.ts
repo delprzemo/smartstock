@@ -52,7 +52,8 @@ export class StockData {
     }
 
 
-    static async getForex(baseSymbol: string, convertTo: string, date: string): Promise<number[]> {
+    static async getForex(baseSymbol: string, convertTo: string, date: string,
+        dates: string[] = null): Promise<[number[], string[]]> {
         let returnPromise: Promise<any> = new Promise((resolve, reject) => {
             stockdata.forex.historical({
                 base: baseSymbol,
@@ -64,13 +65,32 @@ export class StockData {
             })
                 .then((response: { history: any[] }) => {
                     let history = response.history;
-                    let result: number[] = [];
+                    let apiResult: { value: number, date: string }[] = [];
+                    let result = [];
 
-                    for (let key in history) {
-                        result.unshift(+history[key]);
+                    if (dates) {
+                        for (let key in history) {
+                            apiResult.unshift({
+                                value: +history[key],
+                                date: key
+                            });
+                        }
+
+                        for (let dateItem of dates) {
+                            let value = apiResult.find(x => x.date === dateItem);
+                            if (value) result.push(value.value)
+                            else result.push(-1);
+
+                        }
+                    } else {
+                        dates = [];
+                        for (let key in history) {
+                            result.unshift(+history[key]);
+                            dates.unshift(key);
+                        }
                     }
 
-                    resolve(result);
+                    resolve([result, dates]);
                 })
                 .catch((error: any) => {
                     console.log(error);

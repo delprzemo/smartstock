@@ -4,7 +4,8 @@ export class CheckModel {
         public output: number = null,
         public calculatedOutput: number  = null,
         public error: number  = null,
-        public isCorrectTrend: boolean  = null) {
+        public isCorrectTrend: boolean  = null,
+        public prediction: number = null) {
 
     }
 }

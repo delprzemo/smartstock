@@ -190,14 +190,106 @@ describe('Intro -tensorflow -  fun', () => {
     // })
 
 
-    it("Simple prediction for multiple Real Stock Data with LSTM", async function (done) {
+    // it("Simple prediction for multiple Real Stock Data with LSTM", async function (done) {
+    //     this.timeout(50000000); // This works
+    //     const result = await trainAndCheck("AAPL", "2019-04-01", "GOOGL");
+    //     console.log(result);
+    // })
+
+
+    it("Simple prediction for multiple Forex Stock Data with LSTM", async function (done) {
         this.timeout(50000000); // This works
-        const result = await trainAndCheck("FB", "2019-04-01", "GOOGL");
+        const result = await trainAndCheckForex(["USD", "PLN"], "2019-01-01", ["USD", "PLN"], 
+        ["USD", "EUR"], ["USD", "GBP"]);
         console.log(result);
     })
 
+
+
+    async function trainAndCheckForex(baseSymbol: [string, string], date: string,
+        ...rest: [string, string][]): Promise<CheckStatsModel> {
+
+        let returnPromise: Promise<CheckStatsModel> = new Promise(async (resolve, reject) => {
+            // configuration
+            const windowSize = 10;
+            const epochs = 30 * (rest.length + 1);
+            const learningRate = 0.001;
+            const layers = 2;
+            const checkIteration = 10;
+            let restStocks = [];
+            let restStockAfterFilter = [];
+
+            // Prepare training data
+            let [leftSymbol, rightSymbol] = baseSymbol;
+            let [stockTimeSeries, dates] = await StockData.getForex(leftSymbol, rightSymbol, date);
+
+            // get rest stock data
+            for (let item of rest) {
+                let [leftRestSymbol, rightRestSymbol] = item;
+                let [stockData, stockDates] = await StockData.getForex(leftRestSymbol, rightRestSymbol, date, dates);
+                restStocks.push(stockData);
+            }
+
+            // remove missing data
+            let missingDataIndexes = getMissingIndexes(restStocks);
+
+            for (let item of restStocks) {
+                item = removeEmptyData(item, missingDataIndexes);
+                restStockAfterFilter.push(justNormalize(item));
+            }
+
+            stockTimeSeries = removeEmptyData(stockTimeSeries, missingDataIndexes);
+
+            // preapare input and output
+            let [normalizedData, min, max] = normalize(stockTimeSeries);
+            let [input, output] = generateTimeSeriesInputOutput(normalizedData, windowSize, ...restStockAfterFilter);
+            let [checkModels, trainInput, trainOutput] = splitTrainIteration(input, output, checkIteration);
+            let sumWindowSize = windowSize * (1 + restStockAfterFilter.length);
+
+            // train
+            const trainingResult = await trainModel(trainInput, trainOutput, sumWindowSize, epochs,
+                learningRate, layers, () => { });
+
+
+            // predict
+            for (let item of checkModels.filter(x => x.output !== null)) {
+                let predicted = await Predict(item, trainingResult.model)[0];
+                let deNormalized = deNormalize(predicted, min, max);
+                item = calculateCheckValues(item, deNormalized, min, max, restStockAfterFilter.length);
+            }
+
+            let prediction = await Predict(checkModels.find(x => x.output === null), trainingResult.model)[0];
+            let deNormalizedPrediction = deNormalize(prediction, min, max);
+
+            // check
+            let stats = calculateStatistics(checkModels.filter(x => x.output !== null));
+            let lastValue = checkModels[checkModels.length - 1].input[checkModels[0].input.length - 1];
+            let denormalizedLastValue = deNormalize(lastValue, min, max);
+            saveToFile({
+                mainStock: baseSymbol,
+                stats: stats,
+                invest: deNormalizedPrediction > denormalizedLastValue,
+                restStocks: rest,
+                date: date,
+                options: {
+                    windowSize: windowSize,
+                    learningRate: learningRate,
+                    epochs: epochs,
+                    layers: layers
+                },
+                forex: true
+            })
+
+            resolve(stats);
+
+        });
+
+        return returnPromise;
+
+    }
+
     async function trainAndCheck(baseSymbol: string, date: string, ...rest: string[]): Promise<CheckStatsModel> {
-        
+
         let returnPromise: Promise<CheckStatsModel> = new Promise(async (resolve, reject) => {
             // configuration
             const windowSize = 10;
@@ -239,23 +331,34 @@ describe('Intro -tensorflow -  fun', () => {
 
 
             // predict
-            for (let item of checkModels) {
+            for (let item of checkModels.filter(x => x.output !== null)) {
                 let predicted = await Predict(item, trainingResult.model)[0];
                 let deNormalized = deNormalize(predicted, min, max);
                 item = calculateCheckValues(item, deNormalized, min, max, restStockAfterFilter.length);
             }
 
+            let prediction = await Predict(checkModels.find(x => x.output === null), trainingResult.model)[0];
+            let deNormalizedPrediction = deNormalize(prediction, min, max);
+
             // check
-            let stats = calculateStatistics(checkModels);
+            let stats = calculateStatistics(checkModels.filter(x => x.output !== null));
+            let lastValue = checkModels[checkModels.length - 1].input[checkModels[0].input.length - 1];
+            let denormalizedLastValue = deNormalize(lastValue, min, max);
             saveToFile({
-                stats: stats, mainStock: baseSymbol, restStocks: rest, date: date,
+                mainStock: baseSymbol,
+                stats: stats,
+                invest: deNormalizedPrediction > denormalizedLastValue,
+                restStocks: rest,
+                date: date,
                 options: {
                     windowSize: windowSize,
                     learningRate: learningRate,
                     epochs: epochs,
                     layers: layers
-                }
+                },
+                forex: false
             })
+
             resolve(stats);
 
         });
@@ -418,7 +521,7 @@ describe('Intro -tensorflow -  fun', () => {
         let trainOutput = output.slice(0, input.length - checkIteration);
         let result: CheckModel[] = [];
 
-        for (let i = input.length - checkIteration; i < input.length; i++) {
+        for (let i = input.length - checkIteration - 1; i < input.length; i++) {
             result.push(new CheckModel(input[i], output[i]));
         }
 
@@ -465,7 +568,7 @@ describe('Intro -tensorflow -  fun', () => {
 
         let input = [];
         let output = [];
-        for (let i = windowSize; i < array.length; i++) {
+        for (let i = windowSize; i <= array.length; i++) {
             let toPush = array.slice(i - windowSize, i);
 
             for (let serie of rest) {
