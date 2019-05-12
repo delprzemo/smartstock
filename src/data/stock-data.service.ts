@@ -106,6 +106,11 @@ export class StockData {
         "INR", "MXN", "NOK", "PLN", "RUB", "SEK", "XAF", "XCD"]
     }
 
+    static getAllStockSymbols() {
+        return ["INTC", "MSFT", "GOOGL", "SIRI", "QCOM", "NVDA", "CTSH", 
+            "TRUE", "MRVL", "SBUX", "NFLX", "EXAS", "AGNC", "NWSA", "AMZN"]
+    }
+
     static getFewAppleMockedData(quantity: number) {
         return this.getAppleMockedData().slice(0, quantity).reverse();
     }

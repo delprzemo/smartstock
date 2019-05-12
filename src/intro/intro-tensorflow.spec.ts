@@ -190,10 +190,52 @@ describe('Intro -tensorflow -  fun', () => {
     // })
 
 
-    // it("Simple prediction for multiple Real Stock Data with LSTM", async function (done) {
-    //     this.timeout(50000000); // This works
+    it("Simple prediction for multiple Real Stock Data with LSTM", async function (done) {
+        this.timeout(50000000);
 
-    //     let date = '2016-02-01';
+        let date = '2018-11-01';
+        let allSymbols = StockData.getAllStockSymbols();
+        let result = 0;
+
+        saveToFile({
+            currentDate: new Date().toLocaleDateString(),
+            date: date,
+            multiple: false
+        });
+
+        for(let symbol of allSymbols) {
+            result = result + (await trainAndCheck(symbol, date)).avgError;
+        }
+
+        saveToFile({
+            errSum: result / allSymbols.length
+        });
+
+        saveToFile({
+            currentDate: new Date().toLocaleDateString(),
+            date: date,
+            multiple: true
+        });
+
+        result = 0;
+
+        for(let symbol of allSymbols) {
+            result = result + (await trainAndCheck(symbol, date, ...allSymbols)).avgError;
+        }
+
+        saveToFile({
+            errSum: result / allSymbols.length
+        });
+
+    })
+
+
+    // it("Simple prediction for multiple Forex Stock Data with LSTM", async function (done) {
+    //     this.timeout(50000000);
+
+    //     let date = '2018-11-01';
+    //     let allSymbols = StockData.getAllForexSymbols();
+    //     let result = 0;
 
     //     saveToFile({
     //         currentDate: new Date().toLocaleDateString(),
@@ -201,18 +243,13 @@ describe('Intro -tensorflow -  fun', () => {
     //         multiple: false
     //     });
 
-    //     await trainAndCheck("AXAS", date);
-    //     await trainAndCheck("ALTM", date);
-    //     await trainAndCheck("BRY", date);
-    //     await trainAndCheck("FANG", date);
-    //     await trainAndCheck("XOG", date);
-    //     await trainAndCheck("ISRL", date);
-    //     await trainAndCheck("LONE", date);
-    //     await trainAndCheck("NEXT", date);
-    //     await trainAndCheck("ROSE", date);
-    //     await trainAndCheck("TELL", date);
-    //     await trainAndCheck("UPL", date);
-    //     await trainAndCheck("ZN", date);
+    //     for(let symbol of allSymbols) {
+    //         result = result + (await trainAndCheckForex([symbol, "USD"], date)).avgError;
+    //     }
+
+    //     saveToFile({
+    //         errSum: result / allSymbols.length
+    //     });
 
     //     saveToFile({
     //         currentDate: new Date().toLocaleDateString(),
@@ -220,64 +257,21 @@ describe('Intro -tensorflow -  fun', () => {
     //         multiple: true
     //     });
 
-    //     await trainAndCheck("AXAS", date, "AXAS", "ALTM", "BRY", "FANG", "XOG", "ISRL", "LONE", "NEXT", "ROSE", "TELL", "UPL", "ZN")
-    //     await trainAndCheck("ALTM", date, "AXAS", "ALTM", "BRY", "FANG", "XOG", "ISRL", "LONE", "NEXT", "ROSE", "TELL", "UPL", "ZN");
-    //     await trainAndCheck("BRY", date, "AXAS", "ALTM", "BRY", "FANG", "XOG", "ISRL", "LONE", "NEXT", "ROSE", "TELL", "UPL", "ZN");
-    //     await trainAndCheck("FANG", date, "AXAS", "ALTM", "BRY", "FANG", "XOG", "ISRL", "LONE", "NEXT", "ROSE", "TELL", "UPL", "ZN");
-    //     await trainAndCheck("XOG", date, "AXAS", "ALTM", "BRY", "FANG", "XOG", "ISRL", "LONE", "NEXT", "ROSE", "TELL", "UPL", "ZN");
-    //     await trainAndCheck("ISRL", date, "AXAS", "ALTM", "BRY", "FANG", "XOG", "ISRL", "LONE", "NEXT", "ROSE", "TELL", "UPL", "ZN");
-    //     await trainAndCheck("LONE", date, "AXAS", "ALTM", "BRY", "FANG", "XOG", "ISRL", "LONE", "NEXT", "ROSE", "TELL", "UPL", "ZN");
-    //     await trainAndCheck("NEXT", date, "AXAS", "ALTM", "BRY", "FANG", "XOG", "ISRL", "LONE", "NEXT", "ROSE", "TELL", "UPL", "ZN");
-    //     await trainAndCheck("ROSE", date, "AXAS", "ALTM", "BRY", "FANG", "XOG", "ISRL", "LONE", "NEXT", "ROSE", "TELL", "UPL", "ZN");
-    //     await trainAndCheck("TELL", date, "AXAS", "ALTM", "BRY", "FANG", "XOG", "ISRL", "LONE", "NEXT", "ROSE", "TELL", "UPL", "ZN");
-    //     await trainAndCheck("UPL", date, "AXAS", "ALTM", "BRY", "FANG", "XOG", "ISRL", "LONE", "NEXT", "ROSE", "TELL", "UPL", "ZN");
-    //     await trainAndCheck("ZN", date, "AXAS", "ALTM", "BRY", "FANG", "XOG", "ISRL", "LONE", "NEXT", "ROSE", "TELL", "UPL", "ZN");
+    //     result = 0;
+    //     let restSymbols: [string, string][] = [];
 
+    //     for(let symbol of allSymbols) {
+    //         restSymbols.push([symbol, "USD"])
+    //     }
+
+    //     for(let symbol of allSymbols) {
+    //         result = result + (await trainAndCheckForex([symbol, "USD"], date, ...restSymbols)).avgError;
+    //     }
+
+    //     saveToFile({
+    //         errSum: result / allSymbols.length
+    //     });
     // })
-
-
-    it("Simple prediction for multiple Forex Stock Data with LSTM", async function (done) {
-        this.timeout(50000000);
-
-        let date = '2018-11-01';
-        let allSymbols = StockData.getAllForexSymbols();
-        let result = 0;
-
-        // saveToFile({
-        //     currentDate: new Date().toLocaleDateString(),
-        //     date: date,
-        //     multiple: false
-        // });
-
-        // for(let symbol of allSymbols) {
-        //     result = result + (await trainAndCheckForex([symbol, "USD"], date)).avgError;
-        // }
-
-        // saveToFile({
-        //     errSum: result / allSymbols.length
-        // });
-
-        // saveToFile({
-        //     currentDate: new Date().toLocaleDateString(),
-        //     date: date,
-        //     multiple: true
-        // });
-
-        result = 0;
-        let restSymbols: [string, string][] = [];
-
-        for(let symbol of allSymbols) {
-            restSymbols.push([symbol, "USD"])
-        }
-
-        for(let symbol of allSymbols) {
-            result = result + (await trainAndCheckForex([symbol, "USD"], date, ...restSymbols)).avgError;
-        }
-
-        saveToFile({
-            errSum: result / allSymbols.length
-        });
-    })
 
 
 
