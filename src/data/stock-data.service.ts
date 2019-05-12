@@ -5,7 +5,7 @@ export class StockData {
 
     private static token = "svdcKVw3fAgEksDD0lxwDheUGjbGSpdFfjOMyBx2HtVwR8AY4z3BCxTTvO1T";
 
-    static async getStockData(symbol: string, date: string): Promise<number[]> {
+    static async getStockData(symbol: string, date: string, dates: string[] = null): Promise<[number[], string[]]> {
         let returnPromise: Promise<any> = new Promise((resolve, reject) => {
             stockdata.historical({
                 symbol: symbol,
@@ -16,13 +16,32 @@ export class StockData {
             })
                 .then((response: { history: any[] }) => {
                     let history = response.history;
-                    let result: number[] = [];
+                    let apiResult: { value: number, date: string }[] = [];
+                    let result = [];
 
-                    for (let key in history) {
-                        result.unshift(+history[key]["close"]);
+                    if (dates) {
+                        for (let key in history) {
+                            apiResult.unshift({
+                                value: +history[key]["close"],
+                                date: key
+                            });
+                        }
+
+                        for (let dateItem of dates) {
+                            let value = apiResult.find(x => x.date === dateItem);
+                            if (value) result.push(value.value)
+                            else result.push(-1);
+
+                        }
+                    } else {
+                        dates = [];
+                        for (let key in history) {
+                            result.unshift(+history[key]["close"]);
+                            dates.unshift(key);
+                        }
                     }
 
-                    resolve(result);
+                    resolve([result, dates]);
                 })
                 .catch((error: any) => {
                     console.log(error);
@@ -65,6 +84,7 @@ export class StockData {
     static getFewAppleMockedData(quantity: number) {
         return this.getAppleMockedData().slice(0, quantity).reverse();
     }
+
 
     static getAppleMockedData() {
         return [210.52, 200.67, 204.61, 204.30, 205.28, 207.16, 207.48, 204.53, 203.86,

@@ -191,49 +191,94 @@ describe('Intro -tensorflow -  fun', () => {
 
     it("Simple prediction for multiple Real Stock Data with LSTM", async function (done) {
         this.timeout(50000000); // This works
-        const result = await trainAndCheck("KOSS", "2018-11-15", "MSN");
+        const result = await trainAndCheck("AAPL", "2018-06-01", "ADBE","AMD","ALXN","ALGN","GOOG","AMZN",
+        "AAL","AMGN","ADI","GOOGL","AMAT","ASML","ADSK","ADP","BIDU","BIIB","BMRN","BKNG","AVGO","CDNS","CELG","CERN",
+        "CHTR","CHKP","CTAS","CSCO","CTXS","CTSH","CMCSA","COST","CSX","CTRP","DLTR","EBAY","EA","EXPE","FB","FAST",
+        "FISV","FOX","FOXA","GILD","HAS","HSIC","IDXX","ILMN","INCY","INTC","INTU","ISRG","JBHT","JD","KLAC","LRCX",
+        "LBTYA","LBTYK","LULU","MAR","MXIM","MELI","MCHP","MU","MSFT","MDLZ","MNST","MYL","NTAP","NTES","NFLX","NVDA",
+        "NXPI","ORLY","PCAR","PAYX","PYPL","PEP","QCOM","REGN","ROST","SIRI","SWKS","SBUX","SYMC","SNPS","TMUS","TTWO",
+        "TSLA","TXN","KHC","ULTA","UAL","VRSN","VRSK","VRTX","WBA","WDAY","WDC","WLTW","WYNN","XEL","XLNX"
+        );
         console.log(result);
     })
 
-
     async function trainAndCheck(baseSymbol: string, date: string, ...rest: string[]): Promise<CheckStatsModel> {
         let returnPromise: Promise<CheckStatsModel> = new Promise(async (resolve, reject) => {
+
+            // configuration
             const windowSize = 10;
             const epochs = 30 * (rest.length + 1);
             const learningRate = 0.001;
             const layers = 2;
             const checkIteration = 10;
             let restStocks = [];
-    
-    
+            let restStockAfterFilter = [];
+
             // Prepare training data
-            let stockTimeSeries = await StockData.getStockData(baseSymbol, date);
-    
-            for(let item of rest) {
-                restStocks.push(justNormalize(await StockData.getStockData(item, date)))
+            let [stockTimeSeries, dates] = await StockData.getStockData(baseSymbol, date);
+
+            // get rest stock data
+            for (let item of rest) {
+                let [stockData, stockDates] = await StockData.getStockData(item, date, dates);
+                restStocks.push(stockData);
             }
-    
+
+            // remove missing data
+            let missingDataIndexes = getMissingIndexes(restStocks);
+
+            for (let item of restStocks) {
+                item = removeEmptyData(item, missingDataIndexes);
+                restStockAfterFilter.push(justNormalize(item));
+            }
+
+            stockTimeSeries = removeEmptyData(stockTimeSeries, missingDataIndexes);
+
+            // preapare input and output
             let [normalizedData, min, max] = normalize(stockTimeSeries);
-            let [input, output] = generateTimeSeriesInputOutput(normalizedData, windowSize, ...restStocks);
+            let [input, output] = generateTimeSeriesInputOutput(normalizedData, windowSize, ...restStockAfterFilter);
             let [checkModels, trainInput, trainOutput] = splitTrainIteration(input, output, checkIteration);
-    
-            let sumWindowSize = windowSize * (1 + restStocks.length);
-    
+            let sumWindowSize = windowSize * (1 + restStockAfterFilter.length);
+
+            // train
             const trainingResult = await trainModel(trainInput, trainOutput, sumWindowSize, epochs,
                 learningRate, layers, () => { });
-    
-    
+
+
+            // predict
             for (let item of checkModels) {
                 let predicted = await Predict(item, trainingResult.model)[0];
                 let deNormalized = deNormalize(predicted, min, max);
-                item = calculateCheckValues(item, deNormalized, min, max, restStocks.length);
+                item = calculateCheckValues(item, deNormalized, min, max, restStockAfterFilter.length);
             }
-    
+
+            // check
             resolve(calculateStatistics(checkModels));
         });
 
         return returnPromise;
 
+    }
+
+    function removeEmptyData(data: number[], indexes: number[]) {
+        let result = [];
+        for (let key in data) {
+            if (!indexes.some(x => x === +key)) {
+                result.push(data[key]);
+            }
+        }
+
+        return result;
+    }
+
+    function getMissingIndexes(data: number[][]): number[] {
+        let result = [];
+
+        for (let dataItem of data) {
+            for (let key in dataItem) {
+                if (dataItem[key] < 0) result.push(+key);
+            }
+        }
+        return result;
     }
 
     function normalize(input: number[]): [number[], number, number] {
