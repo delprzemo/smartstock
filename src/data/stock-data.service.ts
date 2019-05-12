@@ -101,6 +101,11 @@ export class StockData {
 
     }
 
+    static getAllForexSymbols() {
+        return ["ARS", "AUD", "BGN", "CAD", "CNY", "CZK", "EUR", "GBP",
+        "INR", "MXN", "NOK", "PLN", "RUB", "SEK", "XAF", "XCD"]
+    }
+
     static getFewAppleMockedData(quantity: number) {
         return this.getAppleMockedData().slice(0, quantity).reverse();
     }
