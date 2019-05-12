@@ -4,6 +4,7 @@ import { Tensor } from '@tensorflow/tfjs-node';
 import { StockData } from '../data/stock-data.service'
 import { CheckModel } from '../data/models/check.model';
 import { CheckStatsModel } from '../data/models/check-stats.model';
+const jsonfile = require('jsonfile')
 
 
 describe('Intro -tensorflow -  fun', () => {
@@ -191,20 +192,13 @@ describe('Intro -tensorflow -  fun', () => {
 
     it("Simple prediction for multiple Real Stock Data with LSTM", async function (done) {
         this.timeout(50000000); // This works
-        const result = await trainAndCheck("AAPL", "2018-06-01", "ADBE","AMD","ALXN","ALGN","GOOG","AMZN",
-        "AAL","AMGN","ADI","GOOGL","AMAT","ASML","ADSK","ADP","BIDU","BIIB","BMRN","BKNG","AVGO","CDNS","CELG","CERN",
-        "CHTR","CHKP","CTAS","CSCO","CTXS","CTSH","CMCSA","COST","CSX","CTRP","DLTR","EBAY","EA","EXPE","FB","FAST",
-        "FISV","FOX","FOXA","GILD","HAS","HSIC","IDXX","ILMN","INCY","INTC","INTU","ISRG","JBHT","JD","KLAC","LRCX",
-        "LBTYA","LBTYK","LULU","MAR","MXIM","MELI","MCHP","MU","MSFT","MDLZ","MNST","MYL","NTAP","NTES","NFLX","NVDA",
-        "NXPI","ORLY","PCAR","PAYX","PYPL","PEP","QCOM","REGN","ROST","SIRI","SWKS","SBUX","SYMC","SNPS","TMUS","TTWO",
-        "TSLA","TXN","KHC","ULTA","UAL","VRSN","VRSK","VRTX","WBA","WDAY","WDC","WLTW","WYNN","XEL","XLNX"
-        );
+        const result = await trainAndCheck("FB", "2019-04-01", "GOOGL");
         console.log(result);
     })
 
     async function trainAndCheck(baseSymbol: string, date: string, ...rest: string[]): Promise<CheckStatsModel> {
+        
         let returnPromise: Promise<CheckStatsModel> = new Promise(async (resolve, reject) => {
-
             // configuration
             const windowSize = 10;
             const epochs = 30 * (rest.length + 1);
@@ -252,7 +246,18 @@ describe('Intro -tensorflow -  fun', () => {
             }
 
             // check
-            resolve(calculateStatistics(checkModels));
+            let stats = calculateStatistics(checkModels);
+            saveToFile({
+                stats: stats, mainStock: baseSymbol, restStocks: rest, date: date,
+                options: {
+                    windowSize: windowSize,
+                    learningRate: learningRate,
+                    epochs: epochs,
+                    layers: layers
+                }
+            })
+            resolve(stats);
+
         });
 
         return returnPromise;
@@ -356,14 +361,30 @@ describe('Intro -tensorflow -  fun', () => {
     }
 
     function calculateStatistics(models: CheckModel[]): CheckStatsModel {
+        let budget = 1000;
         let sumError = 0;
         let correctedTrends = 0;
         for (let item of models) {
             sumError = sumError + item.error;
             correctedTrends = correctedTrends + (item.isCorrectTrend ? 1 : 0);
+            if (item.calculatedOutput > item.input[item.input.length - 1]) {
+                budget = budget * (item.output / item.input[item.input.length - 1])
+            }
         }
 
-        return new CheckStatsModel(sumError / models.length, correctedTrends / models.length);
+        const obj = new CheckStatsModel(sumError / models.length,
+            correctedTrends / models.length,
+            budget)
+
+        return obj;
+    }
+
+    function saveToFile(obj: Object) {
+
+        const file = '/tmp/summary.json'
+        jsonfile.writeFile(file, obj, { flag: 'a' }, function (err: any) {
+            if (err) console.error(err)
+        })
     }
 
     function calculateCheckValues(model: CheckModel, predictedValue: number,
