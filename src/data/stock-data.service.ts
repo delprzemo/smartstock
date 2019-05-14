@@ -107,8 +107,9 @@ export class StockData {
     }
 
     static getAllStockSymbols() {
-        return ["INTC", "MSFT", "GOOGL", "SIRI", "QCOM", "NVDA", "CTSH", 
-            "TRUE", "MRVL", "SBUX", "NFLX", "EXAS", "AGNC", "NWSA", "AMZN"]
+        return ["AXP", "AAPL", "BA", "CAT", "CSCO", "CVX", 
+            "XOM", "GS", "HD", "IBM", "INTC", "JNJ", "KO", "JPM",
+        "MCD", "MMM", "MRK", "MSFT", "NKE", "PFE", "PG", "TRV", "UNH", "UTX", "WMT"]
     }
 
     static getFewAppleMockedData(quantity: number) {

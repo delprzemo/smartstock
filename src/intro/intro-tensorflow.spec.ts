@@ -193,23 +193,23 @@ describe('Intro -tensorflow -  fun', () => {
     it("Simple prediction for multiple Real Stock Data with LSTM", async function (done) {
         this.timeout(50000000);
 
-        let date = '2018-11-01';
+        let date = '2018-01-01';
         let allSymbols = StockData.getAllStockSymbols();
         let result = 0;
 
-        saveToFile({
-            currentDate: new Date().toLocaleDateString(),
-            date: date,
-            multiple: false
-        });
+        // saveToFile({
+        //     currentDate: new Date().toLocaleDateString(),
+        //     date: date,
+        //     multiple: false
+        // });
 
-        for(let symbol of allSymbols) {
-            result = result + (await trainAndCheck(symbol, date)).avgError;
-        }
+        // for(let symbol of allSymbols) {
+        //     result = result + (await trainAndCheck(symbol, date)).avgError;
+        // }
 
-        saveToFile({
-            errSum: result / allSymbols.length
-        });
+        // saveToFile({
+        //     errSum: result / allSymbols.length
+        // });
 
         saveToFile({
             currentDate: new Date().toLocaleDateString(),
@@ -219,7 +219,7 @@ describe('Intro -tensorflow -  fun', () => {
 
         result = 0;
 
-        for(let symbol of allSymbols) {
+        for (let symbol of allSymbols) {
             result = result + (await trainAndCheck(symbol, date, ...allSymbols)).avgError;
         }
 
@@ -230,10 +230,23 @@ describe('Intro -tensorflow -  fun', () => {
     })
 
 
+    // it("Just verify Real Stock Data with LSTM", async function (done) {
+    //     this.timeout(50000000);
+
+    //     let date = '2018-10-01';
+    //     let allSymbols = StockData.getAllStockSymbols();
+    //     let result = 0;
+
+    //     result = result + (await trainAndCheck("AAPL", date)).avgError;
+
+
+    // })
+
+
     // it("Simple prediction for multiple Forex Stock Data with LSTM", async function (done) {
     //     this.timeout(50000000);
 
-    //     let date = '2018-11-01';
+    //     let date = '2018-01-01';
     //     let allSymbols = StockData.getAllForexSymbols();
     //     let result = 0;
 
@@ -281,12 +294,13 @@ describe('Intro -tensorflow -  fun', () => {
         let returnPromise: Promise<CheckStatsModel> = new Promise(async (resolve, reject) => {
             // configuration
             const windowSize = 10;
-            const epochs = 60 * (rest.length + 1);
+            const epochs = 100 * (rest.length + 1);
             const learningRate = 0.001;
             const layers = 2;
             const checkIteration = 10;
             let restStocks = [];
             let restStockAfterFilter = [];
+            const move: number = 7;
 
             // Prepare training data
             let [leftSymbol, rightSymbol] = baseSymbol;
@@ -311,7 +325,8 @@ describe('Intro -tensorflow -  fun', () => {
 
             // preapare input and output
             let [normalizedData, min, max] = normalize(stockTimeSeries);
-            let [input, output] = generateTimeSeriesInputOutput(normalizedData, windowSize, ...restStockAfterFilter);
+            let [input, output] = generateTimeSeriesInputOutput(normalizedData, windowSize, move, ...restStockAfterFilter);
+            let [predictionInput, predictionOutput] = generatePredictionInputOutput(normalizedData, windowSize, ...restStockAfterFilter);
             let [checkModels, trainInput, trainOutput] = splitTrainIteration(input, output, checkIteration);
             let sumWindowSize = windowSize * (1 + restStockAfterFilter.length);
 
@@ -327,7 +342,8 @@ describe('Intro -tensorflow -  fun', () => {
                 item = calculateCheckValues(item, deNormalized, min, max, restStockAfterFilter.length);
             }
 
-            let prediction = await Predict(checkModels.find(x => x.output === null), trainingResult.model)[0];
+            // prediction
+            let prediction = await Predict(new CheckModel(predictionInput[0]), trainingResult.model)[0];
             let deNormalizedPrediction = deNormalize(prediction, min, max);
 
             // check
@@ -361,15 +377,16 @@ describe('Intro -tensorflow -  fun', () => {
 
         let returnPromise: Promise<CheckStatsModel> = new Promise(async (resolve, reject) => {
             // configuration
-            const windowSize = 10;
-            const epochs = 30 * (rest.length + 1);
+            const windowSize = 21;
+            const epochs = 120 * (rest.length + 1);
             const learningRate = 0.001;
             const layers = 2;
             const checkIteration = 10;
             let restStocks = [];
             let restStockAfterFilter = [];
+            const move: number = 7;
 
-            // Prepare training data
+            // prepare training data
             let [stockTimeSeries, dates] = await StockData.getStockData(baseSymbol, date);
 
             // get rest stock data
@@ -390,7 +407,8 @@ describe('Intro -tensorflow -  fun', () => {
 
             // preapare input and output
             let [normalizedData, min, max] = normalize(stockTimeSeries);
-            let [input, output] = generateTimeSeriesInputOutput(normalizedData, windowSize, ...restStockAfterFilter);
+            let [input, output] = generateTimeSeriesInputOutput(normalizedData, windowSize, move, ...restStockAfterFilter);
+            let [predictionInput, predictionOutput] = generatePredictionInputOutput(normalizedData, windowSize, ...restStockAfterFilter);
             let [checkModels, trainInput, trainOutput] = splitTrainIteration(input, output, checkIteration);
             let sumWindowSize = windowSize * (1 + restStockAfterFilter.length);
 
@@ -399,24 +417,24 @@ describe('Intro -tensorflow -  fun', () => {
                 learningRate, layers, () => { });
 
 
-            // predict
+            // predict check
             for (let item of checkModels.filter(x => x.output !== null)) {
                 let predicted = await Predict(item, trainingResult.model)[0];
                 let deNormalized = deNormalize(predicted, min, max);
                 item = calculateCheckValues(item, deNormalized, min, max, restStockAfterFilter.length);
             }
 
-            let prediction = await Predict(checkModels.find(x => x.output === null), trainingResult.model)[0];
+            // prediction
+            let prediction = await Predict(new CheckModel(predictionInput[0]), trainingResult.model)[0];
             let deNormalizedPrediction = deNormalize(prediction, min, max);
 
             // check
             let stats = calculateStatistics(checkModels.filter(x => x.output !== null));
             let lastValue = checkModels[checkModels.length - 1].input[checkModels[0].input.length - 1];
-            let denormalizedLastValue = deNormalize(lastValue, min, max);
             saveToFile({
                 mainStock: baseSymbol,
                 stats: stats,
-                invest: deNormalizedPrediction > denormalizedLastValue,
+                invest: deNormalizedPrediction > lastValue,
                 restStocks: rest,
                 date: date,
                 options: {
@@ -590,7 +608,7 @@ describe('Intro -tensorflow -  fun', () => {
         let trainOutput = output.slice(0, input.length - checkIteration);
         let result: CheckModel[] = [];
 
-        for (let i = input.length - checkIteration - 1; i < input.length; i++) {
+        for (let i = input.length - checkIteration - 1; i < input.length - 1; i++) {
             result.push(new CheckModel(input[i], output[i]));
         }
 
@@ -632,12 +650,30 @@ describe('Intro -tensorflow -  fun', () => {
         return result;
     }
 
-    function generateTimeSeriesInputOutput(array: number[],
+    function generatePredictionInputOutput(array: number[],
         windowSize: number, ...rest: number[][]): [number[][], number[]] {
 
         let input = [];
         let output = [];
-        for (let i = windowSize; i <= array.length; i++) {
+        let i = array.length;
+        let toPush = array.slice(i - windowSize, i);
+
+        for (let serie of rest) {
+            toPush = toPush.concat(serie.slice(i - windowSize, i));
+        }
+
+        input.push(toPush);
+        output.push(null);
+
+        return [input, output];
+    }
+
+    function generateTimeSeriesInputOutput(array: number[],
+        windowSize: number, move: number, ...rest: number[][]): [number[][], number[]] {
+
+        let input = [];
+        let output = [];
+        for (let i = windowSize; i <= array.length - move; i++) {
             let toPush = array.slice(i - windowSize, i);
 
             for (let serie of rest) {
@@ -645,7 +681,7 @@ describe('Intro -tensorflow -  fun', () => {
             }
 
             input.push(toPush);
-            output.push(array[i]);
+            output.push(array[i + move]);
         }
 
         return [input, output];
