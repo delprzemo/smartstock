@@ -377,7 +377,7 @@ describe('Intro -tensorflow -  fun', () => {
 
         let returnPromise: Promise<CheckStatsModel> = new Promise(async (resolve, reject) => {
             // configuration
-            const windowSize = 21;
+            const windowSize = 51;
             const epochs = 120 * (rest.length + 1);
             const learningRate = 0.001;
             const layers = 2;
@@ -604,8 +604,8 @@ describe('Intro -tensorflow -  fun', () => {
     function splitTrainIteration(input: number[][], output: number[],
         checkIteration: number): [CheckModel[], number[][], number[]] {
 
-        let trainInput = input.slice(0, input.length - checkIteration);
-        let trainOutput = output.slice(0, input.length - checkIteration);
+        let trainInput = input.slice(0, input.length - checkIteration - 1);
+        let trainOutput = output.slice(0, input.length - checkIteration - 1);
         let result: CheckModel[] = [];
 
         for (let i = input.length - checkIteration - 1; i < input.length - 1; i++) {
