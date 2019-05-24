@@ -3,7 +3,7 @@ const stockdata = require('stock-data.js');
 
 export class StockData {
 
-    private static token = "svdcKVw3fAgEksDD0lxwDheUGjbGSpdFfjOMyBx2HtVwR8AY4z3BCxTTvO1T";
+    private static token = "";
 
     static async getStockData(symbol: string, date: string, dates: string[] = null): Promise<[number[], string[]]> {
         let returnPromise: Promise<any> = new Promise((resolve, reject) => {
